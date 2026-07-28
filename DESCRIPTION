@@ -19,3 +19,5 @@ Imports:
     SingleCellExperiment,
     SummarizedExperiment
 RoxygenNote: 7.3.3
+URL: https://github.com/luisdalvarez-hue/Rtraj
+BugReports: https://github.com/luisdalvarez-hue/Rtraj/issues
