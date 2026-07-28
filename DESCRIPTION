@@ -1,0 +1,21 @@
+Package: Rtraj
+Type: Package
+Title: R interface to run algorithms and analyses described in Bendall et al. and Brulois et al.
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Luis", "Alvarez",
+      email = "luis.d.fernandez.alvarez@gmail.com",
+      role = c("aut", "cre")
+    )
+  )
+Description: More about what it does (maybe more than one line).
+    Continuation lines should be indented.
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    data.table,
+    SingleCellExperiment,
+    SummarizedExperiment
+RoxygenNote: 7.3.3
