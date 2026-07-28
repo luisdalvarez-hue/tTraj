@@ -1,5 +1,3 @@
 install.packages("devtools")
 
-devtools::install_github(
-  "luisalvarez-hue/Rtraj"
-)
+devtools::install_github("luisalvarez-hue/Rtraj")
