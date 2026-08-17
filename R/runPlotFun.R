@@ -1,23 +1,23 @@
-#' runPlotFun: Run plot_as_function.m algorithm.
+#' runPlotFun wrapper: Run plot_as_function algorithm to apply gaussian smoothing on log-normalized single cell data
 #'
 #' @description
 #' User interface to run plot_as_function.m from cyt (Pe'er Lab) in Matlab. Function applies
-#' a Gaussian kernel (per gene) on normalized values along a defined pseudotime trajectory.
+#' Gaussian smoothing (per gene) on normalized values along scaled pseudotemporal coordinates.
 #' Function modifies plot_as_function.m to handle deprecated functions and errors
 #' to run on current Matlab versions.
 #'
-#' @param sce A SingleCellExperiment object containing selected cells from the isolated trajectory.
-#' @param pseudotime A numeric vector of pseudotime values, corresponds to cells' spatial position along the pseudotime.
-#' @param selected_features A character vector of features to apply the Gaussian kernel (per gene) following the expression in pseudotime.
-#' @param num_locs Number of pseudotime locations to represent gene expression values across pseudotime range. Every location calculates a Gaussian-weighted average of nearby cells' normalized expression. Defaults to 100L.
-#' @param smooth_factor Width of the Gaussian neighborhood used to estimate expression at each pseudotime location. Smaller values gives sharper peaks and narrower transitions. Larger values gives wider peaks and smoother transitions. Defaults to 0.5.
-#' @param assay Assay name containing normalized data in SingleCellExperiment object. Defaults to "logcounts".
+#' @param sce A SingleCellExperiment object containing selected cells from the isolated trajectory with scaled pseudotemporal coordinates.
+#' @param pseudotime A column of numeric pseudotemporal coordinate values in SingleCellExperiment object.
+#' @param selected_features A character vector of features to apply smoothing.
+#' @param num_locs Number of locations to represent expression values across pseudotemporal coordinates. Every location calculates a Gaussian-weighted average of nearby cells' normalized expression. Default to 100L.
+#' @param smooth_factor Width of the Gaussian neighborhood used to estimate expression at each location. Smaller values gives sharper peaks and narrower transitions. Larger values gives wider peaks and smoother transitions. Default to 0.5.
+#' @param assay Assay name containing normalized data in SingleCellExperiment object. Default to "logcounts".
 #' @param matlab_version A character string of active Matlab version (e.g. "R2026a").
-#' @param cyt3_script Path to Matlab folder containing Cyt3 scripts. Defaults to "~/Documents/MATLAB".
-#' @param output_dir Path to store output files from running plot_as_function. Defaults to "~/Downloads".
+#' @param cyt3_script Path to Matlab folder containing cyt3 scripts. Default to "~/Documents/MATLAB".
+#' @param output_dir Path to store output files from running plot_as_function. Default to "~/Downloads".
 #'
 #' @author Luis D. Alvarez
-#' @return Input CSV file containing the pseudotime and normalized gene expression values that was used as input for plot_as.function.m in Matlab. Output CSV file containing pseudotime locations and smoothed gene expression values. Log file of plot_as_function.m output in Matlab.
+#' @return Input CSV file containing the pseudotime and normalized gene expression values that was used as input for plot_as.function.m in Matlab. Output CSV file containing pseudotime locations and smoothed gene expression values. Log file of plot_as_function.m console output in Matlab.
 #' @export
 
 
@@ -32,23 +32,36 @@ runPlotFun <- function(
     cyt3_script = "~/Documents/MATLAB",
     output_dir = "~/Downloads") {
 
+  # Check if object exist in global env.
+  if (missing(sce)) {
+    stop(paste0("The object ", as.character(sce), " was not found."))
+  }
 
-  if ((range(pseudotime)[1] < -1e-10) || (range(pseudotime)[2] > 1 + 1e-10)) {
+  # Check if object belongs to SingleCellExperiment class.
+  if(!methods::is(sce, "SingleCellExperiment")) {
+    stop(paste0("Object ", as.character(sce), " is not SingleCellExperiment object. ",
+                "Run class() or str() to check data type."))
+  }
+
+  # Check if pseudotime values are scaled between 0 to 1.
+  if ((range(sce[[pseudotime]])[1] < -1e-10) || (range(sce[[pseudotime]])[2] > 1 + 1e-10)) {
     stop(base::paste0("Improper pseudotime range:\n",
                      "\n",
-                     paste("Min.:", as.character(range(pseudotime)[1]), "\n"),
-                     paste("Max.:", as.character(range(pseudotime)[2]), "\n"),
+                     paste("Min.:", as.character(range(sce[[pseudotime]])[1]), "\n"),
+                     paste("Max.:", as.character(range(sce[[pseudotime]])[2]), "\n"),
                      "\n",
                      "Please scale your vector from 0 to 1.",
                      sep = "\n"))
   }
 
-  if (any(!is.finite(pseudotime))) {
+  # Check if pseudotime contains non-numeric values. Stop if so.
+  if (any(!is.finite(sce[[pseudotime]]))) {
     stop("The pseudotime vector contains NA, NaN, Inf, or -Inf.")
   }
 
   available_assays <- SummarizedExperiment::assayNames(sce)
 
+  # Check if object contains normalized data set.
   if (!assay %in% available_assays) {
     stop(
       "Assay '", assay, "' was not found.\n",
@@ -58,9 +71,9 @@ runPlotFun <- function(
   }
 
   # Pseudotime vector, scaled from 0 to 1 (min-max normalization).
-  scaled_pseudotime_vector <- pseudotime
+  scaled_pseudotime_vector <- sce[[pseudotime]]
 
-  # Name of the new cell-metadata column in sce.
+  # Name of the new cell-metadata column in SCE object.
   pseudotime_column <- "scaled_pseudotime"
 
   # Selected genes to smooth along the trajectory.
@@ -99,7 +112,7 @@ runPlotFun <- function(
   names(scaled_pseudotime_vector) <- colnames(sce)
 
   print("No cellular IDs attached to pseudotime vector. Attaching cellular IDs
-        from SingleCellObject to vector.")
+        from SingleCellExperiment object to vector.")
   }
 
   SummarizedExperiment::colData(sce)[[pseudotime_column]] <- scaled_pseudotime_vector
@@ -177,14 +190,12 @@ runPlotFun <- function(
   cyt_repository <- dirname(cyt_src)
 
   cat(
-    "\n\nCYT repository:\n",
-    cyt_repository,
     "\n\nplot_as_function.m:\n",
     cyt_plot_file,
     "\n\n"
   )
 
-  # Patch and update old Cyt3 code to run current Matlab versions.
+  # Patch and update old Cyt3 code to run on current Matlab versions.
   if (patch_cyt_compatibility) {
 
     original_cyt_code <- readLines(
@@ -233,47 +244,9 @@ runPlotFun <- function(
       x = patched_cyt_code,
       perl = TRUE
     )
-
-    if (!identical(
-      original_cyt_code,
-      patched_cyt_code
-    )) {
-
-      backup_file <- paste0(
-        cyt_plot_file,
-        ".backup_before_R_patch"
-      )
-
-      if (!file.exists(backup_file)) {
-        file.copy(
-          from = cyt_plot_file,
-          to = backup_file,
-          overwrite = FALSE
-        )
-      }
-
-      writeLines(
-        patched_cyt_code,
-        cyt_plot_file,
-        useBytes = TRUE
-      )
-
-      cat(
-        "CYT compatibility changes were applied.\n",
-        "Backup:\n",
-        backup_file,
-        "\n\n"
-      )
-
-    } else {
-
-      cat(
-        "No CYT compatibility changes were required.\n\n"
-      )
-    }
   }
 
-  # Verify genes are present in SingleCellObject.
+  # Verify genes are present in SingleCellExperiment object.
   missing_genes <- setdiff(
     genes_to_plot,
     rownames(sce)
@@ -281,7 +254,7 @@ runPlotFun <- function(
 
   if (length(missing_genes) > 0) {
     stop(
-      "These genes were not found in SingleCellObject:\n",
+      "These genes were not found in SingleCellExperiment object:\n",
       paste(missing_genes, collapse = ", ")
     )
   }
@@ -295,11 +268,12 @@ runPlotFun <- function(
   # columns = genes
 
   # Transpose for plot_as_function formatting and extract data frame with only selected genes.
+  # "normalized_data" should still retain pseudotime column for reordering.
   normalized_data <- t(
     as.matrix(
       SummarizedExperiment::assay(
         sce,
-        assay,
+        assay, # "logcounts"
       )[genes_to_plot, , drop = FALSE])
   )
 
@@ -324,16 +298,12 @@ runPlotFun <- function(
 
   pseudotime_for_plot <- pseudotime_for_plot[valid_cells]
 
-  cell_ids_for_plot <- rownames(normalized_data)[valid_cells]
-
   # Sort cells by pseudotime.
   cell_order <- order(pseudotime_for_plot)
 
   pseudotime_for_plot <- pseudotime_for_plot[cell_order]
 
   expression_for_plot <- expression_for_plot[cell_order, , drop = FALSE]
-
-  cell_ids_for_plot <- cell_ids_for_plot[cell_order]
 
   cat(
     "Input for plot_as_function:\n",
@@ -602,12 +572,6 @@ runPlotFun <- function(
     stop("The MATLAB driver file was not created.")
   }
 
-  cat(
-    "MATLAB driver written to:\n",
-    matlab_driver_file,
-    "\n\n"
-  )
-
   # Run Matlab.
   driver_file_matlab <- escape_matlab_string(
     matlab_driver_file
@@ -699,8 +663,10 @@ runPlotFun <- function(
     as.numeric
   )
 
+  cat("Preview of plot_as_function.m output:\n")
+
   print(
-    head(plot_as_function_values)
+    head(plot_as_function_values[, 1:12], n = 5)
   )
 
   unlink(c(
@@ -712,7 +678,7 @@ runPlotFun <- function(
   cat(
     "\n\nInput CSV:\n",
     input_csv,
-    "\n\nExact plotted values:\n",
+    "\n\nOutput CSV:\n",
     output_values_csv,
     "\n\nMATLAB log:\n",
     matlab_log_file,
@@ -720,4 +686,5 @@ runPlotFun <- function(
   )
 
   return(plot_as_function_values)
+
 }

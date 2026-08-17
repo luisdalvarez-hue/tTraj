@@ -2,7 +2,7 @@
 % Please edit documentation in R/runPlotFun.R
 \name{runPlotFun}
 \alias{runPlotFun}
-\title{runPlotFun: Run plot_as_function.m algorithm.}
+\title{runPlotFun wrapper: Run plot_as_function algorithm to apply gaussian smoothing on log-normalized single cell data}
 \usage{
 runPlotFun(
   sce,
@@ -17,30 +17,30 @@ runPlotFun(
 )
 }
 \arguments{
-\item{sce}{A SingleCellExperiment object containing selected cells from the isolated trajectory.}
+\item{sce}{A SingleCellExperiment object containing selected cells from the isolated trajectory with scaled pseudotemporal coordinates.}
 
-\item{pseudotime}{A numeric vector of pseudotime values, corresponds to cells' spatial position along the pseudotime.}
+\item{pseudotime}{A column of numeric pseudotemporal coordinate values in SingleCellExperiment object.}
 
-\item{selected_features}{A character vector of features to apply the Gaussian kernel (per gene) following the expression in pseudotime.}
+\item{selected_features}{A character vector of features to apply smoothing.}
 
-\item{num_locs}{Number of pseudotime locations to represent gene expression values across pseudotime range. Every location calculates a Gaussian-weighted average of nearby cells' normalized expression. Defaults to 100L.}
+\item{num_locs}{Number of locations to represent expression values across pseudotemporal coordinates. Every location calculates a Gaussian-weighted average of nearby cells' normalized expression. Default to 100L.}
 
-\item{smooth_factor}{Width of the Gaussian neighborhood used to estimate expression at each pseudotime location. Smaller values gives sharper peaks and narrower transitions. Larger values gives wider peaks and smoother transitions. Defaults to 0.5.}
+\item{smooth_factor}{Width of the Gaussian neighborhood used to estimate expression at each location. Smaller values gives sharper peaks and narrower transitions. Larger values gives wider peaks and smoother transitions. Default to 0.5.}
 
-\item{assay}{Assay name containing normalized data in SingleCellExperiment object. Defaults to "logcounts".}
+\item{assay}{Assay name containing normalized data in SingleCellExperiment object. Default to "logcounts".}
 
 \item{matlab_version}{A character string of active Matlab version (e.g. "R2026a").}
 
-\item{cyt3_script}{Path to Matlab folder containing Cyt3 scripts. Defaults to "~/Documents/MATLAB".}
+\item{cyt3_script}{Path to Matlab folder containing cyt3 scripts. Default to "~/Documents/MATLAB".}
 
-\item{output_dir}{Path to store output files from running plot_as_function. Defaults to "~/Downloads".}
+\item{output_dir}{Path to store output files from running plot_as_function. Default to "~/Downloads".}
 }
 \value{
-Input CSV file containing the pseudotime and normalized gene expression values that was used as input for plot_as.function.m in Matlab. Output CSV file containing pseudotime locations and smoothed gene expression values. Log file of plot_as_function.m output in Matlab.
+Input CSV file containing the pseudotime and normalized gene expression values that was used as input for plot_as.function.m in Matlab. Output CSV file containing pseudotime locations and smoothed gene expression values. Log file of plot_as_function.m console output in Matlab.
 }
 \description{
 User interface to run plot_as_function.m from cyt (Pe'er Lab) in Matlab. Function applies
-a Gaussian kernel (per gene) on normalized values along a defined pseudotime trajectory.
+Gaussian smoothing (per gene) on normalized values along scaled pseudotemporal coordinates.
 Function modifies plot_as_function.m to handle deprecated functions and errors
 to run on current Matlab versions.
 }

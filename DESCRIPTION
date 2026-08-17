@@ -1,7 +1,7 @@
-Package: Rtraj
+Package: tTraj
 Type: Package
 Title: R interface to run algorithms and analyses described in Bendall et al. and Brulois et al.
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person(
       "Luis", "Alvarez",
